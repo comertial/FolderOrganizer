@@ -242,17 +242,36 @@ class FolderOrganizer:
                 return category
         return 'Others'  # Default category for unrecognized extensions
 
-    def create_category_folders(self, directory: str) -> None:
-        """Create category folders if they don't exist."""
-        for category in self.extension_maps.keys():
-            category_path = os.path.join(directory, category)
-            if not os.path.exists(category_path):
-                os.makedirs(category_path)
+    def get_required_folders(self, directory: str) -> set:
+        """Determine which category folders are needed based on files present."""
+        required_folders = set()
 
-        # Create 'Others' folder for unrecognized file types
-        others_path = os.path.join(directory, 'Others')
-        if not os.path.exists(others_path):
-            os.makedirs(others_path)
+        for filename in os.listdir(directory):
+            if os.path.isfile(os.path.join(directory, filename)):
+                file_extension = os.path.splitext(filename)[1].lower()
+                folder_found = False
+
+                # Check if the file belongs to any category
+                for category, extensions in self.extension_maps.items():
+                    if file_extension in extensions:
+                        required_folders.add(category)
+                        folder_found = True
+                        break
+
+                # If no category found, file will go to Others
+                if not folder_found:
+                    required_folders.add('Others')
+
+        return required_folders
+
+    def create_category_folders(self, directory: str) -> None:
+        """Create only the necessary category folders based on files present."""
+        required_folders = self.get_required_folders(directory)
+
+        for folder in required_folders:
+            folder_path = os.path.join(directory, folder)
+            if not os.path.exists(folder_path):
+                os.makedirs(folder_path)
 
     def organize_folder(self, directory: str) -> None:
         """Organize files in the specified directory into categories."""
