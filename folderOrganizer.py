@@ -219,6 +219,9 @@ class FolderOrganizer:
             ]
         }
 
+        # List to track moves for undo functionality
+        self.move_histories: List[List[tuple]] = []
+
     def add_extension_category(self, category: str, extensions: List[str]) -> None:
         """Add a new category with its associated file extensions."""
         self.extension_maps[category] = extensions
@@ -281,6 +284,10 @@ class FolderOrganizer:
         # Create category folders
         self.create_category_folders(directory)
 
+        # Create a new move history for this operation
+        current_move_history = []
+        self.move_histories.append(current_move_history)
+
         # Iterate through all files in the directory
         for item in os.listdir(directory):
             item_path = os.path.join(directory, item)
@@ -297,12 +304,42 @@ class FolderOrganizer:
             destination_folder = os.path.join(directory, category)
             destination_path = os.path.join(destination_folder, item)
 
-            # Move file to appropriate category folder
+            # Move file to appropriate category folder and track the move
             try:
                 shutil.move(item_path, destination_path)
+                # Record the move in the current move history
+                current_move_history.append((destination_path, item_path))
                 print(f"Moved '{item}' to {category} folder")
             except Exception as e:
                 print(f"Error moving '{item}': {str(e)}")
+                # If an error occurs, remove the current move history
+                self.move_histories.pop()
+
+    def undo_last_operation(self) -> None:
+        """Undo the last organization operation by moving files back to their original locations."""
+        if not self.move_histories:
+            print("No moves to undo.")
+            return
+
+        # Get the last move history
+        last_move_history = self.move_histories.pop()
+
+        for destination_path, original_path in reversed(last_move_history):
+            try:
+                shutil.move(destination_path, original_path)
+                print(f"Moved '{os.path.basename(destination_path)}' back to original location")
+            except Exception as e:
+                print(f"Error undoing move for '{os.path.basename(destination_path)}': {str(e)}")
+
+    def get_move_history(self, index: int = -1) -> list:
+        """Get the move history for a specific operation. Defaults to the last operation."""
+        if not self.move_histories:
+            return []
+        return self.move_histories[index]
+
+    def clear_move_histories(self) -> None:
+        """Clear all move histories."""
+        self.move_histories.clear()
 
 
 def main():
@@ -323,6 +360,11 @@ def main():
     # Organize the folder
     organizer.organize_folder(directory)
     print("Organization complete!")
+
+    # Option to undo
+    undo_choice = input("Do you want to undo the organization? (yes/no): ").strip().lower()
+    if undo_choice == 'yes':
+        organizer.undo_last_operation()
 
 
 if __name__ == "__main__":
