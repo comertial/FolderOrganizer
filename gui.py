@@ -233,8 +233,10 @@ class FileOrganizerGUI:
             self.status_text.delete(1.0, tk.END)
             self.update_status(f"Starting undo process")
 
+            undo_files = self.organizer.get_move_history()
+
             # Override print and shutil.move for progress handling
-            original_print, original_move = self.setup_progress_handling(len(self.organizer.get_move_history()))
+            original_print, original_move = self.setup_progress_handling(len(undo_files))
 
             try:
                 # Call the undo method from the FolderOrganizer class
@@ -244,7 +246,10 @@ class FileOrganizerGUI:
                 self.restore_functions(original_print, original_move)
 
             self.update_status("\nUndo process complete!")
-            messagebox.showinfo("Success", "Files have been moved back to their original locations!")
+            if len(undo_files) > 0:
+                messagebox.showinfo("Success", "Files have been moved back to their original locations!")
+            else:
+                messagebox.showwarning("Warning", "Undo operation did not move any file!")
 
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred during undo: {str(e)}")
