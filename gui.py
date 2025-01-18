@@ -3,7 +3,7 @@ from tkinter import ttk, filedialog, messagebox
 import os
 import builtins
 import shutil
-from folderOrganizer import FolderOrganizer  # Import the FolderOrganizer class from your original file
+from folderOrganizer import FolderOrganizer
 
 
 class FileOrganizerGUI:
@@ -18,21 +18,21 @@ class FileOrganizerGUI:
         # Create style object
         self.style = ttk.Style()
 
-        # Create the organizer instance from your original class
+        # Create the organizer instance
         self.organizer = FolderOrganizer()
 
         # Create main frame
         self.main_frame = ttk.Frame(self.root, padding="10")
         self.main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
-        # Create and set up the GUI elements
+        # Set up the GUI elements
         self.setup_gui()
 
         # Set initial theme
         self.set_light_theme()
 
     def setup_gui(self):
-        # Theme Toggle Button (add this at the top)
+        # Theme Toggle Button
         self.theme_button = ttk.Button(
             self.main_frame,
             text="Toggle Theme",
@@ -53,10 +53,15 @@ class FileOrganizerGUI:
         ttk.Button(self.main_frame, text="Browse",
                    command=self.browse_directory).grid(row=1, column=1, padx=5)
 
-        # Organize Button
-        ttk.Button(self.main_frame, text="Organize Files",
-                   command=self.organize_files).grid(row=2, column=0,
-                                                     columnspan=2, pady=20)
+        # Organize Button and Undo Button (Centered and closer together)
+        button_frame = ttk.Frame(self.main_frame)
+        button_frame.grid(row=2, column=0, columnspan=2, pady=10)
+
+        ttk.Button(button_frame, text="Organize Files",
+                   command=self.organize_files).grid(row=0, column=0, padx=5)
+
+        ttk.Button(button_frame, text="Undo",
+                   command=self.undo_organization).grid(row=0, column=1, padx=5)
 
         # Status Text
         self.status_text = tk.Text(self.main_frame, height=20, width=70)
@@ -222,6 +227,27 @@ class FileOrganizerGUI:
 
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred: {str(e)}")
+
+    def undo_organization(self):
+        try:
+            self.status_text.delete(1.0, tk.END)
+            self.update_status(f"Starting undo process")
+
+            # Override print and shutil.move for progress handling
+            original_print, original_move = self.setup_progress_handling(len(self.organizer.get_move_history()))
+
+            try:
+                # Call the undo method from the FolderOrganizer class
+                self.organizer.undo_last_operation()
+            finally:
+                # Restore the original print and shutil.move functions
+                self.restore_functions(original_print, original_move)
+
+            self.update_status("\nUndo process complete!")
+            messagebox.showinfo("Success", "Files have been moved back to their original locations!")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred during undo: {str(e)}")
 
 
 def main():
