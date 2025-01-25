@@ -1,15 +1,35 @@
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
+import sys
 import os
 import builtins
 import shutil
 from folderOrganizer import FolderOrganizer
+
+
+def resource_path(relative_path):
+    """ Get the absolute path to the resource, works for dev and for PyInstaller """
+    if hasattr(sys, '_MEIPASS'):
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    else:
+        # Running in development mode, use the current directory
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 class FileOrganizerGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("File Organizer")
         self.root.geometry("800x600")
+
+        # Set the window icon
+        icon_path = resource_path("assets/icon.ico")
+        if os.path.exists(icon_path):
+            self.root.iconbitmap(icon_path)
+        else:
+            print("Icon file not found. Ensure the path is correct.")
 
         # Theme state and appearance mode
         self.is_dark_theme = True
