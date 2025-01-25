@@ -1,11 +1,15 @@
-# Folder Organizer 🗂️
+<p align="center">
+  <img src="assets/icon.svg" width="150"/>
+</p>
+
+# Folder Organizer
 
 **Folder Organizer** is a powerful Python tool designed to automatically organize your cluttered directories by categorizing files based on their extensions. Comes with a GUI, test file generator, and extension analysis tools!
 
 [![Python Version](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![Folder Organizer Demo](gui-screenshot.png)
+![Folder Organizer Demo](assets/gui-screenshot.png)
 
 ## Features ✨
 
@@ -51,6 +55,8 @@ You can create a standalone executable for the GUI interface using PyInstaller. 
 
 2. **Find the Executable**  
    The generated executable will be located in the `dist` directory. Look for `FolderOrganizer.exe` (Windows) or `FolderOrganizer` (macOS/Linux).
+
+> _If you have problems with the icon, execute the command again with administrator privileges._
 
 ## Usage 🚀
 
