@@ -1,6 +1,6 @@
 import os
 import shutil
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from extensionMaps import EXTENSION_MAPS
 
 
@@ -81,7 +81,6 @@ class FolderOrganizer:
 
         # Create a new move history for this operation
         current_move_history = []
-        self.move_histories.append(current_move_history)
 
         # Iterate through all files in the directory
         for item in os.listdir(directory):
@@ -107,8 +106,9 @@ class FolderOrganizer:
                 print(f"Moved '{item}' to {category} folder")
             except Exception as e:
                 print(f"Error moving '{item}': {str(e)}")
-                # If an error occurs, remove the current move history
-                self.move_histories.pop()
+
+        # Append to total history moves
+        self.create_move_history(current_move_history)
 
     def undo_last_operation(self) -> None:
         """Undo the last organization operation by moving files back to their original locations."""
@@ -125,6 +125,12 @@ class FolderOrganizer:
                 print(f"Moved '{os.path.basename(destination_path)}' back to original location")
             except Exception as e:
                 print(f"Error undoing move for '{os.path.basename(destination_path)}': {str(e)}")
+
+    def create_move_history(self, new_history_move: List[Tuple[str, str]]) -> None:
+        """Appends a new history move to the move histories list, maintaining a maximum of 15 entries."""
+        if len(self.move_histories) >= 15:
+            del self.move_histories[0]
+        self.move_histories.append(new_history_move)
 
     def get_move_history(self, index: int = -1) -> list:
         """Get the move history for a specific operation. Defaults to the last operation."""
