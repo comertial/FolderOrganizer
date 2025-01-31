@@ -1,9 +1,12 @@
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
+from tkinter import ttk
+from typing import Union
 import sys
 import os
 import builtins
 import shutil
+import json
 from folderOrganizer import FolderOrganizer
 
 
@@ -17,6 +20,221 @@ def resource_path(relative_path):
         base_path = os.path.abspath(".")
 
     return os.path.join(base_path, relative_path)
+
+class CategoryManager:
+    def __init__(self, root, organizer: FolderOrganizer, status_callback):
+        self.root = root
+        self.organizer = organizer
+        self.status_callback = status_callback
+        self.current_category = None
+        self.current_extension = None
+
+        self.setup_ui()
+        self.refresh_categories()
+
+    def setup_ui(self):
+        main_frame = ctk.CTkFrame(self.root, corner_radius=10)
+        main_frame.pack(padx=10, pady=10, fill="both", expand=True)
+
+        # Categories Section
+        ctk.CTkLabel(main_frame, text="Categories:").grid(row=0, column=0, sticky="w")
+
+        # Category Listbox
+        self.category_list = ctk.CTkScrollableFrame(main_frame, width=200, height=150)
+        self.category_list.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
+
+        # Category Entry
+        self.category_entry = ctk.CTkEntry(main_frame, width=200)
+        self.category_entry.grid(row=2, column=0, padx=5, pady=5)
+
+        # Category Buttons
+        category_btn_frame = ctk.CTkFrame(main_frame)
+        category_btn_frame.grid(row=3, column=0, pady=5)
+        ctk.CTkButton(category_btn_frame, text="Add", width=95, command=self.add_category).grid(row=0, column=0, padx=2)
+        ctk.CTkButton(category_btn_frame, text="Remove", width=95, command=self.remove_category).grid(row=0, column=1,
+                                                                                                      padx=2)
+
+        # Extensions Section
+        ctk.CTkLabel(main_frame, text="Extensions:").grid(row=0, column=1, sticky="w")
+
+        # Extensions Listbox
+        self.extensions_list = ctk.CTkScrollableFrame(main_frame, width=200, height=150)
+        self.extensions_list.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
+
+        # Extension Entry
+        self.extension_entry = ctk.CTkEntry(main_frame, width=200)
+        self.extension_entry.grid(row=2, column=1, padx=5, pady=5)
+
+        # Extension Buttons
+        extension_btn_frame = ctk.CTkFrame(main_frame)
+        extension_btn_frame.grid(row=3, column=1, pady=5)
+        ctk.CTkButton(extension_btn_frame, text="Add", width=95, command=self.add_extension).grid(row=0, column=0,
+                                                                                                  padx=2)
+        ctk.CTkButton(extension_btn_frame, text="Remove", width=95, command=self.remove_extension).grid(row=0, column=1,
+                                                                                                        padx=2)
+
+        # Configure grid weights
+        main_frame.grid_rowconfigure(1, weight=1)
+        main_frame.grid_columnconfigure(0, weight=1)
+        main_frame.grid_columnconfigure(1, weight=1)
+
+        # Bind selection events
+        self.bind_selection_events()
+
+    def bind_selection_events(self):
+        # Bind category selection
+        for child in self.category_list.winfo_children():
+            if isinstance(child, ctk.CTkButton):
+                child.bind("<Button-1>", lambda e, btn=child: self.select_category(btn.cget("text")))
+
+        # Bind extension selection
+        for child in self.extensions_list.winfo_children():
+            if isinstance(child, ctk.CTkLabel):
+                child.bind("<Button-1>", lambda e, lbl=child: self.select_extension(lbl.cget("text")))
+
+    def refresh_categories(self):
+        """Refresh the list of categories."""
+        # Clear existing widgets
+        for widget in self.category_list.winfo_children():
+            widget.destroy()
+
+        # Add new category buttons
+        for category in self.organizer.get_extension_maps():
+            btn = ctk.CTkButton(
+                self.category_list,
+                text=category,
+                anchor="w",
+                corner_radius=5,
+                fg_color="transparent"
+            )
+            btn.pack(fill="x", pady=2)
+
+        self.bind_selection_events()
+        self.refresh_extensions()
+
+    def refresh_extensions(self):
+        """Refresh the list of extensions for the selected category."""
+        for widget in self.extensions_list.winfo_children():
+            widget.destroy()
+
+        if self.current_category:
+            extensions = self.organizer.get_extension_maps().get(self.current_category, [])
+            for ext in extensions:
+                btn = ctk.CTkButton(
+                    self.extensions_list,
+                    text=ext,
+                    anchor="w",
+                    corner_radius=5,
+                    fg_color="transparent",
+                    hover_color=("#EAEAEA", "#2A2A2A")  # Add hover effect
+                )
+                btn.pack(fill="x", pady=2)
+                btn.bind("<Button-1>", lambda e, ext=ext: self.select_extension(ext))
+
+        self.bind_selection_events()
+
+    def select_category(self, category: str):
+        """Select a category and show its extensions."""
+        self.current_category = category
+        self.category_entry.delete(0, "end")
+        self.category_entry.insert(0, category)
+        self.refresh_extensions()
+
+    def select_extension(self, extension: str):
+        """Select an extension."""
+        self.current_extension = extension
+        self.extension_entry.delete(0, "end")
+        self.extension_entry.insert(0, extension)
+
+    def add_category(self):
+        """Add a new category."""
+        new_category = self.category_entry.get().strip()
+        if not new_category:
+            messagebox.showerror("Error", "Please enter a category name!")
+            return
+
+        if new_category in self.organizer.get_extension_maps():
+            messagebox.showerror("Error", "Category already exists!")
+            return
+
+        self.organizer.add_extension_category(new_category, [])
+        self.category_entry.delete(0, "end")
+        self.refresh_categories()
+        self.status_callback(f"Added category: {new_category}")
+
+    def remove_category(self):
+        """Remove the selected category."""
+        category_to_remove = self.category_entry.get().strip()
+        if not category_to_remove:
+            messagebox.showerror("Error", "No category selected!")
+            return
+
+        self.organizer.remove_category(category_to_remove)
+        self.category_entry.delete(0, "end")
+        self.current_category = None
+        self.refresh_categories()
+        self.status_callback(f"Removed category: {category_to_remove}")
+
+    def add_extension(self):
+        """Add an extension to the current category with validation."""
+        if not self.current_category:
+            messagebox.showerror("Error", "No category selected!")
+            return
+
+        new_ext = self.extension_entry.get().strip().lower()
+        if not new_ext.startswith('.'):
+            new_ext = '.' + new_ext
+
+        if not new_ext:
+            messagebox.showerror("Error", "Please enter an extension!")
+            return
+
+        # Check for duplicate in current category
+        current_extensions = self.organizer.get_extension_maps().get(self.current_category, [])
+        if new_ext in current_extensions:
+            messagebox.showerror("Error", f"Extension {new_ext} already exists in this category!")
+            return
+
+        # Check for existence in other categories
+        conflicting_categories = []
+        for category, extensions in self.organizer.get_extension_maps().items():
+            if category != self.current_category and new_ext in extensions:
+                conflicting_categories.append(category)
+
+        if conflicting_categories:
+            conflict_list = "\n- ".join(conflicting_categories)
+            response = messagebox.askyesno(
+                "Conflict Detected",
+                f"Extension {new_ext} already exists in:\n- {conflict_list}\n\nAdd anyway?"
+            )
+            if not response:
+                return
+
+        # Add the extension if all checks pass
+        self.organizer.add_extensions_to_category(self.current_category, [new_ext])
+        self.extension_entry.delete(0, "end")
+        self.refresh_extensions()
+        self.status_callback(f"Added extension {new_ext} to {self.current_category}")
+
+    def remove_extension(self):
+        """Remove the selected extension."""
+        if not self.current_category:
+            messagebox.showerror("Error", "No category selected!")
+            return
+
+        ext_to_remove = self.extension_entry.get().strip().lower()
+        if not ext_to_remove.startswith('.'):
+            ext_to_remove = '.' + ext_to_remove
+
+        current_extensions = self.organizer.get_extension_maps().get(self.current_category, [])
+        if ext_to_remove in current_extensions:
+            current_extensions.remove(ext_to_remove)
+            self.organizer.add_extension_category(self.current_category, current_extensions)
+            self.extension_entry.delete(0, "end")
+            self.refresh_extensions()
+            self.status_callback(f"Removed extension {ext_to_remove} from {self.current_category}")
+        else:
+            messagebox.showerror("Error", "Extension not found in category!")
 
 class FileOrganizerGUI:
     def __init__(self, root):
@@ -44,6 +262,7 @@ class FileOrganizerGUI:
 
         # Set up the GUI elements
         self.setup_gui()
+        self.management_window = None  # Track category management window
 
     def setup_gui(self):
         # Theme Toggle Button
@@ -95,6 +314,62 @@ class FileOrganizerGUI:
             width=700
         )
         self.progress_bar.grid(row=4, column=0, columnspan=2, pady=10)
+
+        control_frame = ctk.CTkFrame(self.main_frame, corner_radius=10)
+        control_frame.grid(row=5, column=0, columnspan=2, pady=10)
+
+        ctk.CTkButton(control_frame, text="Manage Categories",
+                      command=self.open_management_window, corner_radius=5).grid(row=0, column=0, padx=5)
+        ctk.CTkButton(control_frame, text="Save Maps",
+                      command=self.save_maps, corner_radius=5).grid(row=0, column=1, padx=5)
+        ctk.CTkButton(control_frame, text="Load Maps",
+                      command=self.load_maps, corner_radius=5).grid(row=0, column=2, padx=5)
+
+    def open_management_window(self):
+        """Open the category management window."""
+        if self.management_window and self.management_window.winfo_exists():
+            self.management_window.lift()
+            return
+
+        self.management_window = ctk.CTkToplevel(self.root)
+        self.management_window.title("Manage Categories")
+        self.management_window.geometry("600x500")
+
+        CategoryManager(self.management_window, self.organizer, self.update_status)
+
+    def save_maps(self):
+        """Save current extension maps to a JSON file."""
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".json",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+        )
+        if not file_path:
+            return
+
+        try:
+            with open(file_path, 'w') as f:
+                json.dump(self.organizer.get_extension_maps(), f, indent=4)
+            self.update_status(f"Extension maps saved to {file_path}")
+            messagebox.showinfo("Success", "Extension maps saved successfully!")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save maps: {str(e)}")
+
+    def load_maps(self):
+        """Load extension maps from a JSON file."""
+        file_path = filedialog.askopenfilename(
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+        )
+        if not file_path:
+            return
+
+        try:
+            with open(file_path, 'r') as f:
+                new_maps = json.load(f)
+            self.organizer.set_extension_maps(new_maps)
+            self.update_status(f"Extension maps loaded from {file_path}")
+            messagebox.showinfo("Success", "Extension maps loaded successfully!")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load maps: {str(e)}")
 
     def toggle_theme(self):
         if self.is_dark_theme:
