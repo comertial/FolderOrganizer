@@ -81,6 +81,19 @@ class CategoryManager:
         # Bind selection events
         self.bind_selection_events()
 
+    def refresh_ui(self):
+        """Refresh all UI elements with current theme settings."""
+        # Update base frame colors
+        self.root.configure(fg_color=ctk.ThemeManager.theme["CTkFrame"]["fg_color"])
+
+        # Refresh all elements
+        self.refresh_categories()
+        self.refresh_extensions()
+
+        # Update entry fields
+        self.category_entry.configure(text_color=ctk.ThemeManager.theme["CTkEntry"]["text_color"])
+        self.extension_entry.configure(text_color=ctk.ThemeManager.theme["CTkEntry"]["text_color"])
+
     def bind_selection_events(self):
         # Bind category selection
         for child in self.category_list.winfo_children():
@@ -98,18 +111,19 @@ class CategoryManager:
         for widget in self.category_list.winfo_children():
             widget.destroy()
 
-        # Add new category buttons
+        # Add new category buttons with theme-adaptive colors
         for category in self.organizer.get_extension_maps():
             btn = ctk.CTkButton(
                 self.category_list,
                 text=category,
                 anchor="w",
                 corner_radius=5,
-                fg_color="transparent"
+                fg_color="transparent",
+                text_color=("gray10", "gray90")  # Dark in light theme, light in dark theme
             )
             btn.pack(fill="x", pady=2)
+            btn.bind("<Button-1>", lambda e, c=category: self.select_category(c))
 
-        self.bind_selection_events()
         self.refresh_extensions()
 
     def refresh_extensions(self):
@@ -126,10 +140,15 @@ class CategoryManager:
                     anchor="w",
                     corner_radius=5,
                     fg_color="transparent",
-                    hover_color=("#EAEAEA", "#2A2A2A")  # Add hover effect
+                    text_color=("gray10", "gray90")
                 )
                 btn.pack(fill="x", pady=2)
-                btn.bind("<Button-1>", lambda e, ext=ext: self.select_extension(ext))
+
+                # Use a helper function to capture the extension
+                def make_handler(extension):
+                    return lambda e: self.select_extension(extension)
+
+                btn.bind("<Button-1>", make_handler(ext))
 
         self.bind_selection_events()
 
@@ -335,7 +354,10 @@ class FileOrganizerGUI:
         self.management_window.title("Manage Categories")
         self.management_window.geometry("600x500")
 
-        CategoryManager(self.management_window, self.organizer, self.update_status)
+        # Store CategoryManager instance as an attribute of the management window
+        self.management_window.category_manager = CategoryManager(
+            self.management_window, self.organizer, self.update_status
+        )
 
     def save_maps(self):
         """Save current extension maps to a JSON file."""
@@ -377,6 +399,14 @@ class FileOrganizerGUI:
         else:
             ctk.set_appearance_mode("dark")
         self.is_dark_theme = not self.is_dark_theme
+
+        # Force refresh all UI components
+        if self.management_window and self.management_window.winfo_exists():
+            self.management_window.category_manager.refresh_ui()
+
+        # Update main window elements
+        self.main_frame.configure(fg_color=ctk.ThemeManager.theme["CTkFrame"]["fg_color"])
+        self.status_text.configure(text_color=ctk.ThemeManager.theme["CTkTextbox"]["text_color"])
 
     def browse_directory(self):
         directory = filedialog.askdirectory()
