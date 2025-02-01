@@ -15,7 +15,15 @@ class FolderOrganizer:
 
     @staticmethod
     def get_default_extension_maps() -> Dict[str, List[str]]:
-        return EXTENSION_MAPS
+        return EXTENSION_MAPS.copy()
+
+    def set_extension_maps(self, new_maps: Dict[str, List[str]]) -> None:
+        """Replace the current extension maps with new ones."""
+        self.extension_maps = new_maps.copy()
+
+    def get_extension_maps(self) -> Dict[str, List[str]]:
+        """Get a copy of the current extension maps."""
+        return {k: v.copy() for k, v in self.extension_maps.items()}
 
     def add_extension_category(self, category: str, extensions: List[str]) -> None:
         """Add a new category with its associated file extensions."""

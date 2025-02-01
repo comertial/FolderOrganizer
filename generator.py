@@ -14,7 +14,7 @@ class TestFileGenerator:
 
     @staticmethod
     def get_default_extension_maps() -> Dict[str, List[str]]:
-        return EXTENSION_MAPS
+        return EXTENSION_MAPS.copy()
 
     @staticmethod
     def generate_random_string(length=8):
