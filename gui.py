@@ -348,16 +348,26 @@ class FileOrganizerGUI:
         """Open the category management window."""
         if self.management_window and self.management_window.winfo_exists():
             self.management_window.lift()
+            self.management_window.focus_force()
             return
 
         self.management_window = ctk.CTkToplevel(self.root)
         self.management_window.title("Manage Categories")
         self.management_window.geometry("600x500")
 
-        # Store CategoryManager instance as an attribute of the management window
+        # Force window to stay on top of main window
+        self.management_window.transient(self.root)
+        self.management_window.attributes('-topmost', True)  # Temporarily force to front
+        self.management_window.after(100, lambda: self.management_window.attributes('-topmost', False))
+
+        # Create category manager and focus
         self.management_window.category_manager = CategoryManager(
             self.management_window, self.organizer, self.update_status
         )
+
+        # Bring to front and focus
+        self.management_window.lift()
+        self.management_window.focus_force()
 
     def save_maps(self):
         """Save current extension maps to a JSON file."""
