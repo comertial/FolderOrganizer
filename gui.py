@@ -348,26 +348,35 @@ class FileOrganizerGUI:
         """Open the category management window."""
         if self.management_window and self.management_window.winfo_exists():
             self.management_window.lift()
-            self.management_window.focus_force()
+            self.management_window.focus()
             return
 
         self.management_window = ctk.CTkToplevel(self.root)
         self.management_window.title("Manage Categories")
         self.management_window.geometry("600x500")
 
-        # Force window to stay on top of main window
+        # Set transient and window protocol
         self.management_window.transient(self.root)
-        self.management_window.attributes('-topmost', True)  # Temporarily force to front
-        self.management_window.after(100, lambda: self.management_window.attributes('-topmost', False))
+        self.management_window.protocol("WM_DELETE_WINDOW", self.on_management_window_close)
 
-        # Create category manager and focus
+        # Create category manager
         self.management_window.category_manager = CategoryManager(
             self.management_window, self.organizer, self.update_status
         )
 
-        # Bring to front and focus
-        self.management_window.lift()
-        self.management_window.focus_force()
+        # Bring to front using CTkinter methods
+        self.management_window.after(100, self.management_window.lift)
+        self.management_window.after(150, lambda: self.management_window.focus())
+
+        # Set grab while window is open
+        self.management_window.grab_set()
+
+    def on_management_window_close(self):
+        """Handle management window closing."""
+        if self.management_window:
+            self.management_window.grab_release()
+            self.management_window.destroy()
+            self.management_window = None
 
     def save_maps(self):
         """Save current extension maps to a JSON file."""
@@ -410,9 +419,13 @@ class FileOrganizerGUI:
             ctk.set_appearance_mode("dark")
         self.is_dark_theme = not self.is_dark_theme
 
-        # Force refresh all UI components
+        # Only refresh if window exists and is visible
         if self.management_window and self.management_window.winfo_exists():
-            self.management_window.category_manager.refresh_ui()
+            try:
+                self.management_window.category_manager.refresh_ui()
+            except Exception as e:
+                print(f"Error refreshing UI: {e}")
+                self.management_window = None
 
         # Update main window elements
         self.main_frame.configure(fg_color=ctk.ThemeManager.theme["CTkFrame"]["fg_color"])
